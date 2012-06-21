@@ -1,0 +1,37 @@
+Name:                stats-web
+Version:             0.1
+Synopsis:            Simple Web Stats Interface
+Homepage:            http://bu.mp
+License:             AllRightsReserved
+License-file:        LICENSE
+Author:              Bump Technologies, Inc
+Maintainer:          dev@bu.mp
+Category:            Network
+Build-type:          Simple
+Cabal-version:       >=1.8
+
+
+Library
+  Exposed-modules:     Network.StatsWeb
+
+  hs-source-dirs:      src
+
+  Build-depends: base >=4 && <5,
+                 mtl>=2.1,
+                 text>=0.11,
+                 scotty,
+                 aeson,
+                 containers
+
+  Extensions:    ScopedTypeVariables,OverloadedStrings
+  ghc-options:   -O2
+
+
+Executable stats_web_test
+  Main-is: src/Network/StatsWeb/Test.hs
+
+  Build-depends: base >=4 && <5,
+                 stats-web
+
+  Extensions:    OverloadedStrings
+  ghc-options:   -O2
