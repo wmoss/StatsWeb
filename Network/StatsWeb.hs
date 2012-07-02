@@ -4,7 +4,8 @@ module Bump.StatsWeb.Network.StatsWeb (
     runStats,
     addCounter,
     incCounter,
-    setCounter
+    setCounter,
+    maybeCounter
     ) where
 
 import Control.Monad (forever, void)
@@ -42,7 +43,7 @@ runStats tvstats port = do
     scotty port $ do
         get "/:stats" $ do
             gcStats <- liftIO getGCStats
-            let garbage = ["bump.matchd2.gc.bytesAllocated" .= bytesAllocated gcStats,
+            let garbage = ["bump.matchd2.gc.bytes.allocated" .= bytesAllocated gcStats,
                                  "bump.matchd2.gc.num.gcs" .= numGcs gcStats,
                                  "bump.matchd2.gc.bytes.used.max" .= maxBytesUsed gcStats,
                                  "bump.matchd2.gc.num.byte.usage.samples" .= numByteUsageSamples gcStats,
@@ -104,4 +105,7 @@ setCounter stats name val = do
   counter <- getCounter stats name (Just val) set
   counter
 
-  
+maybeCounter :: (Num a) => (a -> Bool) -> a -> IO () -> IO () 
+maybeCounter cond val action
+  | cond val = action
+  | otherwise = return ()
