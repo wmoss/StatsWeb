@@ -68,7 +68,6 @@ runStats tvstats port = do
             html $ toLazyText $ fromValue $ object (garbage ++ counters)
 
                     
-
 initStats :: IO Stats
 initStats = newTVarIO M.empty
 
@@ -95,13 +94,13 @@ getCounter stats name val action = atomically $ do
     Just _ -> return $ action (fromJust counter) val
     Nothing -> return $ hPutStrLn stderr $ "counter " ++ (T.unpack name) ++ " not added to Stats Map"
     
-incCounter :: Stats -> T.Text -> IO ()
-incCounter stats name = do
+incCounter :: T.Text -> Stats -> IO ()
+incCounter name stats = do
   counter <- getCounter stats name Nothing tick
   counter
   
-setCounter :: Stats -> T.Text -> Int -> IO ()
-setCounter stats name val = do
+setCounter :: T.Text -> Int -> Stats -> IO ()
+setCounter name val stats = do
   counter <- getCounter stats name (Just val) set
   counter
 
@@ -109,3 +108,4 @@ maybeCounter :: (Num a) => (a -> Bool) -> a -> IO () -> IO ()
 maybeCounter cond val action
   | cond val = action
   | otherwise = return ()
+                
