@@ -43,7 +43,7 @@ runStats tvstats port = do
     scotty port $ do
         get "/:stats" $ do
             gcStats <- liftIO getGCStats
-            let garbage = ["bump.matchd2.gc.bytes.allocated" .= bytesAllocated gcStats,
+            let garbage = ["bump.matchd2.gc.bytesAllocated" .= bytesAllocated gcStats,
                                  "bump.matchd2.gc.num.gcs" .= numGcs gcStats,
                                  "bump.matchd2.gc.bytes.used.max" .= maxBytesUsed gcStats,
                                  "bump.matchd2.gc.num.byte.usage.samples" .= numByteUsageSamples gcStats,
@@ -68,17 +68,18 @@ runStats tvstats port = do
             html $ toLazyText $ fromValue $ object (garbage ++ counters)
 
                     
+
 initStats :: IO Stats
 initStats = newTVarIO M.empty
 
-tick :: TVar Int -> Maybe Int -> IO ()
-tick counter Nothing = atomically $ do
+tick :: TVar Int -> IO ()
+tick counter = atomically $ do
     v <- readTVar counter
     writeTVar counter $ v + 1
 
-set :: TVar Int -> Maybe Int -> IO ()
-set counter val = atomically $ do
-  writeTVar counter $ fromJust val
+set :: Int -> TVar Int -> IO ()
+set val counter = atomically $ do
+  writeTVar counter $ val
 
 addCounter :: Stats -> T.Text -> IO ()
 addCounter stats name = atomically $ do
@@ -86,26 +87,28 @@ addCounter stats name = atomically $ do
   s <- readTVar stats
   writeTVar stats $ M.insert name counter s
 
-getCounter :: Stats -> T.Text -> Maybe Int -> (TVar Int -> Maybe Int -> IO ()) -> IO (IO ())
-getCounter stats name val action = atomically $ do
+getCounter :: Stats -> T.Text -> (TVar Int -> IO ()) -> IO (IO ())
+getCounter stats name action = atomically $ do
   s <- readTVar stats
   let counter = M.lookup name s  
   case counter of
-    Just _ -> return $ action (fromJust counter) val
-    Nothing -> return $ hPutStrLn stderr $ "counter " ++ (T.unpack name) ++ " not added to Stats Map"
-    
+    Just c -> return $ action c
+    Nothing -> return $ hPutStrLn stderr $ "counter " ++ (T.unpack name) ++ " not added to Stats Map"    
 incCounter :: T.Text -> Stats -> IO ()
 incCounter name stats = do
-  counter <- getCounter stats name Nothing tick
+  counter <- getCounter stats name tick
   counter
   
 setCounter :: T.Text -> Int -> Stats -> IO ()
 setCounter name val stats = do
-  counter <- getCounter stats name (Just val) set
+  counter <- getCounter stats name (set val)
   counter
+  
+maybeCounter :: (Num a) => (a -> Bool)  -> a -> IO () -> IO ()
+maybeCounter cond val action = 
+  case cond val of
+    True -> action
+    False -> return ()
 
-maybeCounter :: (Num a) => (a -> Bool) -> a -> IO () -> IO () 
-maybeCounter cond val action
-  | cond val = action
-  | otherwise = return ()
-                
+
+  
