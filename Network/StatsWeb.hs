@@ -7,12 +7,8 @@ module Network.StatsWeb (
     setCounter
     ) where
 
-import Control.Monad (forever, void)
 import Control.Monad.Trans (liftIO)
-import Control.Concurrent (threadDelay, forkIO)
-
-import Data.Maybe (fromJust)
-import Data.Aeson (Value(..), (.=), object, encode)
+import Data.Aeson ((.=), object)
 import Data.Aeson.Encode (fromValue)
 import Web.Scotty (scotty, get, html)
 import qualified Data.Text as T

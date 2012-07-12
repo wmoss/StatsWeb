@@ -22,7 +22,7 @@ Library
                  containers
 
   Extensions:    ScopedTypeVariables,OverloadedStrings
-  ghc-options:   -O2
+  ghc-options:   -O2 -Wall
 
 
 Executable stats_web_test
