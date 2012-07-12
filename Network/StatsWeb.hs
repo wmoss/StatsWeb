@@ -19,7 +19,7 @@ import Control.Arrow
 
 import System.IO (hPutStrLn, stderr)
 
-import GHC.Conc (TVar, newTVar, newTVarIO, readTVar, writeTVar, atomically)
+import GHC.Conc (TVar, newTVar, newTVarIO, readTVar, readTVarIO, writeTVar, atomically)
 import GHC.Stats
 
 
@@ -85,22 +85,17 @@ addCounter stats name = atomically $ do
   s <- readTVar $ tvstats stats
   writeTVar (tvstats stats) $ M.insert name counter s
 
-getCounter :: Stats -> T.Text -> (TVar Int -> IO ()) -> IO (IO ())
-getCounter stats name action = atomically $ do
-  s <- readTVar $ tvstats stats
-  let counter = M.lookup name s
+modifyCounter :: Stats -> T.Text -> (TVar Int -> IO ()) -> IO ()
+modifyCounter stats name action = do
+  counter <- M.lookup name <$> (readTVarIO $ tvstats stats)
   case counter of
-    Just c -> return $ action c
-    Nothing -> return $ hPutStrLn stderr $ "counter " ++ (T.unpack name) ++ " not added to Stats Map"
+    Just c -> action c
+    Nothing -> hPutStrLn stderr $ "counter " ++ (T.unpack name) ++ " not added to Stats Map"
 
 incCounter :: T.Text -> Stats -> IO ()
-incCounter name stats = do
-  counter <- getCounter stats name tick
-  counter
+incCounter name stats =
+  modifyCounter stats name tick
 
 setCounter :: T.Text -> Int -> Stats -> IO ()
-setCounter name val stats = do
-  counter <- getCounter stats name (set val)
-  counter
-
-
+setCounter name val stats =
+  modifyCounter stats name (set val)
