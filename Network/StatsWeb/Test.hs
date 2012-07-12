@@ -1,24 +1,21 @@
-import Network.StatsWeb (initStats, runStats, addCounter)
+import Network.StatsWeb (initStats, runStats,
+                         addCounter, incCounter)
 
 import Control.Monad (forever)
 import Control.Concurrent (threadDelay, forkIO)
 
 
-
 main = do
        -- initialize a TVar protected Text-Int Map
-       stats <- initStats
+       stats <- initStats "statsweb.test."
        -- increment the counter and give it a name
-       counter <- addCounter stats "test1"
+       addCounter stats "test1"
        -- in a separate thread, continually call the counter action
        -- make sure "test1" is only being called once
        -- make a ghc object every second
-       forkIO $ tick counter
+       forkIO $ tick stats
        runStats stats 3344
-       
 
-
-
-tick counter = forever $ do
-    counter
+tick stats = forever $ do
+    incCounter "test1" stats
     threadDelay 1000000

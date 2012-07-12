@@ -1,4 +1,4 @@
-module Bump.StatsWeb.Network.StatsWeb (
+module Network.StatsWeb (
     Stats,
     initStats,
     runStats,
