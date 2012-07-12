@@ -60,13 +60,13 @@ runStats tvstats port = do
                                  "bump.matchd2.gc.seconds.wall" .= wallSeconds gcStats,
                                  "bump.matchd2.gc.bytes.copied.par.avg" .= parAvgBytesCopied gcStats,
                                  "bump.matchd2.gc.bytes.copied.par.max" .= parMaxBytesCopied gcStats]
-                  
+
             stats <- liftIO $ flattenStats tvstats
             let counters = foldl (\acc (k, v) -> (T.append "bump.matchd2.count." k .= v):acc) [] stats
-            
+
             html $ toLazyText $ fromValue $ object (garbage ++ counters)
 
-                    
+
 
 initStats :: IO Stats
 initStats = newTVarIO M.empty
@@ -89,19 +89,18 @@ addCounter stats name = atomically $ do
 getCounter :: Stats -> T.Text -> (TVar Int -> IO ()) -> IO (IO ())
 getCounter stats name action = atomically $ do
   s <- readTVar stats
-  let counter = M.lookup name s  
+  let counter = M.lookup name s
   case counter of
     Just c -> return $ action c
-    Nothing -> return $ hPutStrLn stderr $ "counter " ++ (T.unpack name) ++ " not added to Stats Map"    
+    Nothing -> return $ hPutStrLn stderr $ "counter " ++ (T.unpack name) ++ " not added to Stats Map"
 incCounter :: T.Text -> Stats -> IO ()
 incCounter name stats = do
   counter <- getCounter stats name tick
   counter
-  
+
 setCounter :: T.Text -> Int -> Stats -> IO ()
 setCounter name val stats = do
   counter <- getCounter stats name (set val)
   counter
 
 
-  
