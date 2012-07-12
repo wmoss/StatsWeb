@@ -19,6 +19,7 @@ import qualified Data.Text as T
 import Data.Text.Lazy.Builder (toLazyText)
 import qualified Data.Map as M
 import Control.Applicative
+import Control.Arrow
 
 import System.IO (hPutStrLn, stderr)
 
@@ -26,20 +27,23 @@ import GHC.Conc (TVar, newTVar, newTVarIO, readTVar, writeTVar, atomically)
 import GHC.Stats
 
 
-type Stats = TVar (M.Map T.Text (TVar Int))
+data Stats = Stats {
+    prefix   :: T.Text,
+    tvstats  :: TVar (M.Map T.Text (TVar Int))
+    }
 
-flattenStats :: Stats -> IO [(T.Text, Int)]
-flattenStats tvstats = atomically $ do
-    stats <- readTVar tvstats
-    counts <- mapM readTVar $ M.elems stats
-    return $ zip (M.keys stats) counts
+flattenStats :: TVar (M.Map T.Text (TVar Int)) -> IO [(T.Text, Int)]
+flattenStats stats = atomically $ do
+    stats' <- readTVar stats
+    counts <- mapM readTVar $ M.elems stats'
+    return $ zip (M.keys stats') counts
 
 {-
 (.=) :: ToJSON a => Text -> a -> Pair
 name .= value = (name, toJSON value)
 -}
 runStats :: Stats -> Int -> IO ()
-runStats tvstats port = do
+runStats stats port = do
     scotty port $ do
         get "/:stats" $ do
             gcStats <- liftIO getGCStats
@@ -62,11 +66,13 @@ runStats tvstats port = do
                           , "gc.bytes.copied.par.avg" .= parAvgBytesCopied gcStats
                           , "gc.bytes.copied.par.max" .= parMaxBytesCopied gcStats]
 
-            stats <- liftIO $ map (uncurry (.=)) <$> flattenStats tvstats
-            html $ toLazyText $ fromValue $ object (garbage ++ stats)
+            counters <- liftIO $ map (uncurry (.=)) <$> (flattenStats $ tvstats stats)
+            html $ toLazyText $ fromValue $ object $ map addPrefix $ garbage ++ counters
+  where
+    addPrefix = first . T.append $ prefix stats
 
-initStats :: IO Stats
-initStats = newTVarIO M.empty
+initStats :: T.Text -> IO Stats
+initStats pfx = Stats pfx <$> newTVarIO M.empty
 
 tick :: TVar Int -> IO ()
 tick counter = atomically $ do
@@ -80,16 +86,17 @@ set val counter = atomically $ do
 addCounter :: Stats -> T.Text -> IO ()
 addCounter stats name = atomically $ do
   counter <- newTVar 0
-  s <- readTVar stats
-  writeTVar stats $ M.insert name counter s
+  s <- readTVar $ tvstats stats
+  writeTVar (tvstats stats) $ M.insert name counter s
 
 getCounter :: Stats -> T.Text -> (TVar Int -> IO ()) -> IO (IO ())
 getCounter stats name action = atomically $ do
-  s <- readTVar stats
+  s <- readTVar $ tvstats stats
   let counter = M.lookup name s
   case counter of
     Just c -> return $ action c
     Nothing -> return $ hPutStrLn stderr $ "counter " ++ (T.unpack name) ++ " not added to Stats Map"
+
 incCounter :: T.Text -> Stats -> IO ()
 incCounter name stats = do
   counter <- getCounter stats name tick
