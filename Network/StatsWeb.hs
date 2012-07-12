@@ -4,8 +4,7 @@ module Bump.StatsWeb.Network.StatsWeb (
     runStats,
     addCounter,
     incCounter,
-    setCounter,
-    maybeCounter
+    setCounter
     ) where
 
 import Control.Monad (forever, void)
@@ -103,12 +102,6 @@ setCounter :: T.Text -> Int -> Stats -> IO ()
 setCounter name val stats = do
   counter <- getCounter stats name (set val)
   counter
-  
-maybeCounter :: (Num a) => (a -> Bool)  -> a -> IO () -> IO ()
-maybeCounter cond val action = 
-  case cond val of
-    True -> action
-    False -> return ()
 
 
   
