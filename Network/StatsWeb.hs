@@ -18,6 +18,7 @@ import Web.Scotty (scotty, get, html)
 import qualified Data.Text as T
 import Data.Text.Lazy.Builder (toLazyText)
 import qualified Data.Map as M
+import Control.Applicative
 
 import System.IO (hPutStrLn, stderr)
 
@@ -42,31 +43,27 @@ runStats tvstats port = do
     scotty port $ do
         get "/:stats" $ do
             gcStats <- liftIO getGCStats
-            let garbage = ["bump.matchd2.gc.bytesAllocated" .= bytesAllocated gcStats,
-                                 "bump.matchd2.gc.num.gcs" .= numGcs gcStats,
-                                 "bump.matchd2.gc.bytes.used.max" .= maxBytesUsed gcStats,
-                                 "bump.matchd2.gc.num.byte.usage.samples" .= numByteUsageSamples gcStats,
-                                 "bump.matchd2.gc.bytes.used.cum" .= cumulativeBytesUsed gcStats,
-                                 "bump.matchd2.gc.bytes.copied" .= bytesCopied gcStats,
-                                 "bump.matchd2.gc.bytes.used.current" .= currentBytesUsed gcStats,
-                                 "bump.matchd2.gc.bytes.slop.current" .= currentBytesSlop gcStats,
-                                 "bump.matchd2.gc.bytes.slop.max" .= maxBytesSlop gcStats,
-                                 "bump.matchd2.gc.peak.megabytes.allocated" .= peakMegabytesAllocated gcStats,
-                                 "bump.matchd2.gc.seconds.mutator.cpu" .= mutatorCpuSeconds gcStats,
-                                 "bump.matchd2.gc.seconds.mutator.wall" .= mutatorWallSeconds gcStats,
-                                 "bump.matchd2.gc.seconds.gc.cpu" .= gcCpuSeconds gcStats,
-                                 "bump.matchd2.gc.seconds.gc.wall" .= gcWallSeconds gcStats,
-                                 "bump.matchd2.gc.seconds.cpu" .= cpuSeconds gcStats,
-                                 "bump.matchd2.gc.seconds.wall" .= wallSeconds gcStats,
-                                 "bump.matchd2.gc.bytes.copied.par.avg" .= parAvgBytesCopied gcStats,
-                                 "bump.matchd2.gc.bytes.copied.par.max" .= parMaxBytesCopied gcStats]
+            let garbage = [ "gc.bytes.allocated" .= bytesAllocated gcStats
+                          , "gc.num.gcs" .= numGcs gcStats
+                          , "gc.bytes.used.max" .= maxBytesUsed gcStats
+                          , "gc.num.byte.usage.samples" .= numByteUsageSamples gcStats
+                          , "gc.bytes.used.cum" .= cumulativeBytesUsed gcStats
+                          , "gc.bytes.copied" .= bytesCopied gcStats
+                          , "gc.bytes.used.current" .= currentBytesUsed gcStats
+                          , "gc.bytes.slop.current" .= currentBytesSlop gcStats
+                          , "gc.bytes.slop.max" .= maxBytesSlop gcStats
+                          , "gc.peak.megabytes.allocated" .= peakMegabytesAllocated gcStats
+                          , "gc.seconds.mutator.cpu" .= mutatorCpuSeconds gcStats
+                          , "gc.seconds.mutator.wall" .= mutatorWallSeconds gcStats
+                          , "gc.seconds.gc.cpu" .= gcCpuSeconds gcStats
+                          , "gc.seconds.gc.wall" .= gcWallSeconds gcStats
+                          , "gc.seconds.cpu" .= cpuSeconds gcStats
+                          , "gc.seconds.wall" .= wallSeconds gcStats
+                          , "gc.bytes.copied.par.avg" .= parAvgBytesCopied gcStats
+                          , "gc.bytes.copied.par.max" .= parMaxBytesCopied gcStats]
 
-            stats <- liftIO $ flattenStats tvstats
-            let counters = foldl (\acc (k, v) -> (T.append "bump.matchd2.count." k .= v):acc) [] stats
-
-            html $ toLazyText $ fromValue $ object (garbage ++ counters)
-
-
+            stats <- liftIO $ map (uncurry (.=)) <$> flattenStats tvstats
+            html $ toLazyText $ fromValue $ object (garbage ++ stats)
 
 initStats :: IO Stats
 initStats = newTVarIO M.empty
