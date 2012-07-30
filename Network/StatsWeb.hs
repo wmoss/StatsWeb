@@ -73,11 +73,11 @@ initStats pfx = Stats pfx <$> newTVarIO M.empty
 tick :: TVar Int -> IO ()
 tick counter = atomically $ do
     v <- readTVar counter
-    writeTVar counter $ v + 1
+    writeTVar counter $! v + 1
 
 set :: Int -> TVar Int -> IO ()
 set val counter = atomically $ do
-  writeTVar counter $ val
+  writeTVar counter $! val
 
 addCounter :: Stats -> T.Text -> IO ()
 addCounter stats name = atomically $ do
