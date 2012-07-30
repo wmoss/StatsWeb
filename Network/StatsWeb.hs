@@ -20,6 +20,7 @@ import Control.Arrow
 import System.IO (hPutStrLn, stderr)
 
 import GHC.Conc (TVar, newTVar, newTVarIO, readTVar, readTVarIO, writeTVar, atomically)
+import Control.Concurrent.STM.TVar (modifyTVar')
 import GHC.Stats
 
 
@@ -70,10 +71,13 @@ runStats stats port = do
 initStats :: T.Text -> IO Stats
 initStats pfx = Stats pfx <$> newTVarIO M.empty
 
+
+
 modifyTVarIO :: (a -> a) -> TVar a -> IO ()
-modifyTVarIO f tv = atomically $ do
-    v <- readTVar tv
-    writeTVar tv $! f v
+modifyTVarIO =
+    atomically .* flip modifyTVar'
+  where
+    (.*) = (.) . (.)
 
 addCounter :: Stats -> T.Text -> IO ()
 addCounter stats name = atomically $ do
