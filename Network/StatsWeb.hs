@@ -70,14 +70,10 @@ runStats stats port = do
 initStats :: T.Text -> IO Stats
 initStats pfx = Stats pfx <$> newTVarIO M.empty
 
-tick :: TVar Int -> IO ()
-tick counter = atomically $ do
-    v <- readTVar counter
-    writeTVar counter $! v + 1
-
-set :: Int -> TVar Int -> IO ()
-set val counter = atomically $ do
-  writeTVar counter $! val
+modifyTVarIO :: (a -> a) -> TVar a -> IO ()
+modifyTVarIO f tv = atomically $ do
+    v <- readTVar tv
+    writeTVar tv $! f v
 
 addCounter :: Stats -> T.Text -> IO ()
 addCounter stats name = atomically $ do
@@ -94,8 +90,8 @@ modifyCounter stats name action = do
 
 incCounter :: T.Text -> Stats -> IO ()
 incCounter name stats =
-  modifyCounter stats name tick
+    modifyCounter stats name $ modifyTVarIO (+1)
 
 setCounter :: T.Text -> Int -> Stats -> IO ()
 setCounter name val stats =
-  modifyCounter stats name (set val)
+    modifyCounter stats name $ modifyTVarIO $ \_ -> val
