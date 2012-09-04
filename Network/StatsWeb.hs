@@ -3,6 +3,7 @@ module Network.StatsWeb (
     initStats,
     runStats,
     addCounter,
+    showCounter,
     incCounter,
     setCounter
     ) where
@@ -20,6 +21,7 @@ import Control.Arrow
 import System.IO (hPutStrLn, stderr)
 
 import GHC.Conc (TVar, newTVar, newTVarIO, readTVar, readTVarIO, writeTVar, atomically)
+import Control.Concurrent.STM.TVar (modifyTVar')
 import GHC.Stats
 
 
@@ -70,14 +72,11 @@ runStats stats port = do
 initStats :: T.Text -> IO Stats
 initStats pfx = Stats pfx <$> newTVarIO M.empty
 
-tick :: TVar Int -> IO ()
-tick counter = atomically $ do
-    v <- readTVar counter
-    writeTVar counter $ v + 1
-
-set :: Int -> TVar Int -> IO ()
-set val counter = atomically $ do
-  writeTVar counter $ val
+modifyTVarIO :: (a -> a) -> TVar a -> IO ()
+modifyTVarIO =
+    atomically .* flip modifyTVar'
+  where
+    (.*) = (.) . (.)
 
 addCounter :: Stats -> T.Text -> IO ()
 addCounter stats name = atomically $ do
@@ -92,10 +91,19 @@ modifyCounter stats name action = do
     Just c -> action c
     Nothing -> hPutStrLn stderr $ "counter " ++ (T.unpack name) ++ " not added to Stats Map"
 
+showCounter :: T.Text -> Stats -> IO String
+showCounter name stats = do
+  counter <- M.lookup name <$> (readTVarIO $ tvstats stats)
+  case counter of
+    Just c -> do
+      val <- readTVarIO c
+      return $ show val
+    Nothing -> return $ "counter " ++ (T.unpack name) ++ " not added to Stats Map"
+
 incCounter :: T.Text -> Stats -> IO ()
 incCounter name stats =
-  modifyCounter stats name tick
+    modifyCounter stats name $ modifyTVarIO (+1)
 
 setCounter :: T.Text -> Int -> Stats -> IO ()
 setCounter name val stats =
-  modifyCounter stats name (set val)
+    modifyCounter stats name $ modifyTVarIO $ \_ -> val
