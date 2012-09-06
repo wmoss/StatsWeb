@@ -93,14 +93,12 @@ modifyCounter stats name action = do
         Just c -> action c
         Nothing -> hPutStrLn stderr $ "counter " ++ (T.unpack name) ++ " not added to Stats Map"
 
-showCounter :: T.Text -> Stats -> IO String
+showCounter :: T.Text -> Stats -> IO (Maybe Int)
 showCounter name stats = do
     counter <- M.lookup name <$> (readTVarIO $ tvstats stats)
     case counter of
-        Just c -> do
-            val <- readTVarIO c
-            return $ show val
-        Nothing -> return $ "counter " ++ (T.unpack name) ++ " not added to Stats Map"
+        Just c -> atomically $ readTVar c >>= (\x -> return $ Just x)
+        Nothing -> return Nothing
 
 incCounter :: T.Text -> Stats -> IO ()
 incCounter name stats =
