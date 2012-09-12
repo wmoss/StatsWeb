@@ -3,7 +3,9 @@ module Network.StatsWeb (
     initStats,
     runStats,
     addCounter,
+    showCounter,
     incCounter,
+    incCounterBy,
     setCounter
     ) where
 
@@ -81,21 +83,32 @@ modifyTVarIO =
 
 addCounter :: Stats -> T.Text -> IO ()
 addCounter stats name = atomically $ do
-  counter <- newTVar 0
-  s <- readTVar $ tvstats stats
-  writeTVar (tvstats stats) $ M.insert name counter s
+    counter <- newTVar 0
+    s <- readTVar $ tvstats stats
+    writeTVar (tvstats stats) $ M.insert name counter s
 
 modifyCounter :: Stats -> T.Text -> (TVar Int -> IO ()) -> IO ()
 modifyCounter stats name action = do
-  counter <- M.lookup name <$> (readTVarIO $ tvstats stats)
-  case counter of
-    Just c -> action c
-    Nothing -> hPutStrLn stderr $ "counter " ++ (T.unpack name) ++ " not added to Stats Map"
+    counter <- M.lookup name <$> (readTVarIO $ tvstats stats)
+    case counter of
+        Just c -> action c
+        Nothing -> hPutStrLn stderr $ "counter " ++ (T.unpack name) ++ " not added to Stats Map"
+
+showCounter :: T.Text -> Stats -> IO (Maybe Int)
+showCounter name stats = do
+    counter <- M.lookup name <$> (readTVarIO $ tvstats stats)
+    case counter of
+        Just c -> readTVarIO c >>= (\x -> return $ Just x)
+        Nothing -> return Nothing
 
 incCounter :: T.Text -> Stats -> IO ()
 incCounter name stats =
     modifyCounter stats name $ modifyTVarIO (+1)
 
+incCounterBy :: Int -> T.Text -> Stats -> IO ()
+incCounterBy by name stats = 
+    modifyCounter stats name $ modifyTVarIO (+by)
+  
 setCounter :: T.Text -> Int -> Stats -> IO ()
 setCounter name val stats =
     modifyCounter stats name $ modifyTVarIO $ \_ -> val
