@@ -98,7 +98,7 @@ showCounter :: T.Text -> Stats -> IO (Maybe Int)
 showCounter name stats = do
     counter <- M.lookup name <$> (readTVarIO $ tvstats stats)
     case counter of
-        Just c -> atomically $ readTVar c >>= (\x -> return $ Just x)
+        Just c -> readTVarIO c >>= (\x -> return $ Just x)
         Nothing -> return Nothing
 
 incCounter :: T.Text -> Stats -> IO ()
