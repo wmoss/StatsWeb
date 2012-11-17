@@ -62,7 +62,6 @@ runStats stats port = do
                           , "gc.seconds.gc.wall" .= gcWallSeconds gcStats
                           , "gc.seconds.cpu" .= cpuSeconds gcStats
                           , "gc.seconds.wall" .= wallSeconds gcStats
-                          , "gc.bytes.copied.par.avg" .= parAvgBytesCopied gcStats
                           , "gc.bytes.copied.par.max" .= parMaxBytesCopied gcStats]
 
             counters <- liftIO $ map (uncurry (.=)) <$> (flattenStats $ tvstats stats)
