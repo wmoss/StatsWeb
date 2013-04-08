@@ -91,7 +91,7 @@ modifyCounter stats name action = do
     counter <- M.lookup name <$> (readTVarIO $ tvstats stats)
     case counter of
         Just c -> action c
-        Nothing -> hPutStrLn stderr $ "counter " ++ (T.unpack name) ++ " not added to Stats Map"
+        Nothing -> addCounter stats name >> modifyCounter stats name action
 
 showCounter :: T.Text -> Stats -> IO (Maybe Int)
 showCounter name stats = do
@@ -105,9 +105,9 @@ incCounter name stats =
     modifyCounter stats name $ modifyTVarIO (+1)
 
 incCounterBy :: Int -> T.Text -> Stats -> IO ()
-incCounterBy by name stats = 
+incCounterBy by name stats =
     modifyCounter stats name $ modifyTVarIO (+by)
-  
+
 setCounter :: T.Text -> Int -> Stats -> IO ()
 setCounter name val stats =
     modifyCounter stats name $ modifyTVarIO $ \_ -> val
