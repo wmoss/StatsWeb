@@ -20,7 +20,8 @@ Library
                  text,
                  scotty,
                  aeson,
-                 containers
+                 containers,
+                 text-format
 
   Extensions:    ScopedTypeVariables,OverloadedStrings
   ghc-options:   -O2 -Wall
@@ -35,7 +36,8 @@ Executable stats_web_test
                  text,
                  scotty,
                  aeson,
-                 containers
+                 containers,
+                 text-format
 
   Other-Modules: Network.StatsWeb
   Extensions:    OverloadedStrings
