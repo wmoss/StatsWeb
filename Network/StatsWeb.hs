@@ -2,6 +2,7 @@ module Network.StatsWeb (
     Stats,
     initStats,
     runStats,
+    runStatsWithTag,
     addCounter,
     showCounter,
     incCounter,
@@ -40,13 +41,10 @@ flattenStats stats = atomically $ do
     return $ zip (M.keys stats') counts
 
 runStats :: Stats -> Int -> IO ()
-runStats stats port = runStats' stats port (addPostfix . addPrefix)
-  where
-    addPrefix = first . T.append $ prefix stats
-    addPostfix (t,v) = (T.append t $ TL.toStrict $ format "[port={}]" (Only $ Shown port), v)
+runStats stats port = runStatsWithTag stats port port
 
-runStats' :: Stats -> Int -> ((T.Text,Value) -> (T.Text,Value)) -> IO ()
-runStats' stats port modifyMetric = do
+runStatsWithTag :: (Show a) => Stats -> Int -> a -> IO ()
+runStatsWithTag stats port version = do
     scotty port $ do
         get "/:stats" $ do
             gcStats <- liftIO getGCStats
@@ -69,7 +67,10 @@ runStats' stats port modifyMetric = do
                           , "gc.bytes.copied.par.max" .= parMaxBytesCopied gcStats]
 
             counters <- liftIO $ map (uncurry (.=)) <$> (flattenStats $ tvstats stats)
-            html $ toLazyText $ fromValue $ object $ map modifyMetric $ garbage ++ counters
+            html $ toLazyText $ fromValue $ object $ map (addPrefix . addPostfix) $ garbage ++ counters
+  where
+    addPrefix = first . T.append $ prefix stats
+    addPostfix (t,v) = (T.append t $ TL.toStrict $ format "[type={}]" (Only $ Shown version), v)
 
 initStats :: T.Text -> IO Stats
 initStats pfx = Stats pfx <$> newTVarIO M.empty
