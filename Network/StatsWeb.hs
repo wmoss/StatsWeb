@@ -10,11 +10,13 @@ module Network.StatsWeb (
     ) where
 
 import Control.Monad.Trans (liftIO)
-import Data.Aeson ((.=), object)
+import Data.Aeson ((.=), object, Value)
 import Data.Aeson.Encode (fromValue)
 import Web.Scotty (scotty, get, html)
 import qualified Data.Text as T
+import Data.Text.Format
 import Data.Text.Lazy.Builder (toLazyText)
+import qualified Data.Text.Lazy as TL
 import qualified Data.Map as M
 import Control.Applicative
 import Control.Arrow
@@ -37,12 +39,14 @@ flattenStats stats = atomically $ do
     counts <- mapM readTVar $ M.elems stats'
     return $ zip (M.keys stats') counts
 
-{-
-(.=) :: ToJSON a => Text -> a -> Pair
-name .= value = (name, toJSON value)
--}
 runStats :: Stats -> Int -> IO ()
-runStats stats port = do
+runStats stats port = runStats' stats port (addPostfix . addPrefix)
+  where
+    addPrefix = first . T.append $ prefix stats
+    addPostfix (t,v) = (T.append t $ TL.toStrict $ format "[port={}]" (Only $ Shown port), v)
+
+runStats' :: Stats -> Int -> ((T.Text,Value) -> (T.Text,Value)) -> IO ()
+runStats' stats port modifyMetric = do
     scotty port $ do
         get "/:stats" $ do
             gcStats <- liftIO getGCStats
@@ -65,9 +69,7 @@ runStats stats port = do
                           , "gc.bytes.copied.par.max" .= parMaxBytesCopied gcStats]
 
             counters <- liftIO $ map (uncurry (.=)) <$> (flattenStats $ tvstats stats)
-            html $ toLazyText $ fromValue $ object $ map addPrefix $ garbage ++ counters
-  where
-    addPrefix = first . T.append $ prefix stats
+            html $ toLazyText $ fromValue $ object $ map modifyMetric $ garbage ++ counters
 
 initStats :: T.Text -> IO Stats
 initStats pfx = Stats pfx <$> newTVarIO M.empty
